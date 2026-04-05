@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/defany/goblin/errfmt"
 	"github.com/defany/goblin/pg"
 	"github.com/defany/goblin/tx"
 	"github.com/jackc/pgx/v5"
@@ -37,7 +38,7 @@ func (a *Adapter) BeginTx(ctx context.Context, opts tx.Options) (tx.Transaction,
 
 	t, err := a.db.BeginTx(ctx, pgOpts)
 	if err != nil {
-		return nil, err
+		return nil, errfmt.WithSource(err)
 	}
 
 	return &pgTx{tx: t}, nil
@@ -56,11 +57,11 @@ type pgTx struct {
 }
 
 func (t *pgTx) Commit(ctx context.Context) error {
-	return t.tx.Commit(ctx)
+	return errfmt.WithSource(t.tx.Commit(ctx))
 }
 
 func (t *pgTx) Rollback(ctx context.Context) error {
-	return t.tx.Rollback(ctx)
+	return errfmt.WithSource(t.tx.Rollback(ctx))
 }
 
 func (t *pgTx) InjectCtx(ctx context.Context) context.Context {

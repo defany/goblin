@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/defany/goblin/errfmt"
 	"github.com/defany/goblin/pg"
 	"github.com/gookit/goutil/arrutil"
 	"github.com/jackc/pgx/v5"
@@ -29,10 +30,12 @@ func (r *Repository[T]) Insert(ctx context.Context, args T, opts ...*river.Inser
 	opt := cmp.Or(opts...)
 
 	if tx := pg.ExtractTx(ctx); tx != nil {
-		return r.client.InsertTx(ctx, tx, args, opt)
+		res, err := r.client.InsertTx(ctx, tx, args, opt)
+		return res, errfmt.WithSource(err)
 	}
 
-	return r.client.Insert(ctx, args, opt)
+	res, err := r.client.Insert(ctx, args, opt)
+	return res, errfmt.WithSource(err)
 }
 
 func (r *Repository[T]) InsertMany(ctx context.Context, args []T, opts ...*river.InsertOpts) ([]*rivertype.JobInsertResult, error) {
@@ -46,16 +49,18 @@ func (r *Repository[T]) InsertMany(ctx context.Context, args []T, opts ...*river
 	})
 
 	if tx := pg.ExtractTx(ctx); tx != nil {
-		return r.client.InsertManyTx(ctx, tx, params)
+		res, err := r.client.InsertManyTx(ctx, tx, params)
+		return res, errfmt.WithSource(err)
 	}
 
-	return r.client.InsertMany(ctx, params)
+	res, err := r.client.InsertMany(ctx, params)
+	return res, errfmt.WithSource(err)
 }
 
 func (r *Repository[T]) FetchJob(ctx context.Context, id int64) (*rivertype.JobRow, error) {
 	jobs, err := r.FetchJobs(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errfmt.WithSource(err)
 	}
 
 	if len(jobs) == 0 {
@@ -72,7 +77,7 @@ func (r *Repository[T]) FetchJobs(ctx context.Context, ids ...int64) ([]*riverty
 
 	result, err := r.client.JobList(ctx, river.NewJobListParams().IDs(ids...))
 	if err != nil {
-		return nil, err
+		return nil, errfmt.WithSource(err)
 	}
 
 	return result.Jobs, nil
@@ -93,7 +98,7 @@ func (r *Repository[T]) CancelJobs(ctx context.Context, ids ...int64) error {
 		}
 
 		if err != nil {
-			return err
+			return errfmt.WithSource(err)
 		}
 	}
 
@@ -109,8 +114,8 @@ func (r *Repository[T]) DeleteJobs(ctx context.Context, ids ...int64) error {
 
 	if tx := pg.ExtractTx(ctx); tx != nil {
 		_, err := tx.Exec(ctx, query, ids)
-		return err
+		return errfmt.WithSource(err)
 	}
 
-	return r.client.Driver().GetExecutor().Exec(ctx, query, ids)
+	return errfmt.WithSource(r.client.Driver().GetExecutor().Exec(ctx, query, ids))
 }

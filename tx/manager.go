@@ -7,6 +7,8 @@ import (
 	"math/rand/v2"
 	"runtime/debug"
 	"time"
+
+	"github.com/defany/goblin/errfmt"
 )
 
 const baseBackoff = 10 * time.Millisecond
@@ -87,7 +89,7 @@ func (m *Manager) Run(ctx context.Context, h Handler, opts ...RunOption) error {
 		}
 	}
 
-	return fmt.Errorf("tx: retries exceeded")
+	return errfmt.WithSource(fmt.Errorf("tx: retries exceeded"))
 }
 
 func (m *Manager) execTx(ctx context.Context, cfg runConfig, h Handler) (err error) {
@@ -100,7 +102,7 @@ func (m *Manager) execTx(ctx context.Context, cfg runConfig, h Handler) (err err
 		ReadOnly: cfg.readOnly,
 	})
 	if err != nil {
-		return fmt.Errorf("tx: begin: %w", err)
+		return errfmt.WithSource(fmt.Errorf("tx: begin: %w", err))
 	}
 
 	ctx = injectTx(ctx, t)
@@ -108,7 +110,7 @@ func (m *Manager) execTx(ctx context.Context, cfg runConfig, h Handler) (err err
 
 	defer func() {
 		if r := recover(); r != nil {
-			err = fmt.Errorf("tx: panic: %v", r)
+			err = errfmt.WithSource(fmt.Errorf("tx: panic: %v", r))
 
 			if m.panicHandler != nil {
 				m.panicHandler(ctx, HandledPanic{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/defany/goblin/errfmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -22,12 +23,12 @@ func New(opts ...Option) (*Postgres, error) {
 
 	dsn := cfg.buildDSN()
 	if dsn == "" {
-		return nil, fmt.Errorf("pg: dsn or connection params required")
+		return nil, errfmt.WithSource(fmt.Errorf("pg: dsn or connection params required"))
 	}
 
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, fmt.Errorf("pg: parse config: %w", err)
+		return nil, errfmt.WithSource(fmt.Errorf("pg: parse config: %w", err))
 	}
 
 	if cfg.maxConns != nil {
@@ -51,7 +52,7 @@ func New(opts ...Option) (*Postgres, error) {
 
 	pool, err := pgxpool.NewWithConfig(context.Background(), poolCfg)
 	if err != nil {
-		return nil, fmt.Errorf("pg: connect: %w", err)
+		return nil, errfmt.WithSource(fmt.Errorf("pg: connect: %w", err))
 	}
 
 	return &Postgres{
@@ -63,20 +64,22 @@ func New(opts ...Option) (*Postgres, error) {
 func (p *Postgres) Query(ctx context.Context, query string, args ...any) (pgx.Rows, error) {
 	ctx, query, args, err := applyMiddlewares(ctx, p.middlewares, query, args)
 	if err != nil {
-		return nil, err
+		return nil, errfmt.WithSource(err)
 	}
 
 	if tx := ExtractTx(ctx); tx != nil {
-		return tx.Query(ctx, query, args...)
+		rows, err := tx.Query(ctx, query, args...)
+		return rows, errfmt.WithSource(err)
 	}
 
-	return p.pool.Query(ctx, query, args...)
+	rows, err := p.pool.Query(ctx, query, args...)
+	return rows, errfmt.WithSource(err)
 }
 
 func (p *Postgres) QueryRow(ctx context.Context, query string, args ...any) pgx.Row {
 	ctx, query, args, err := applyMiddlewares(ctx, p.middlewares, query, args)
 	if err != nil {
-		return errorRow{err: err}
+		return errorRow{err: errfmt.WithSource(err)}
 	}
 
 	if tx := ExtractTx(ctx); tx != nil {
@@ -89,14 +92,16 @@ func (p *Postgres) QueryRow(ctx context.Context, query string, args ...any) pgx.
 func (p *Postgres) Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error) {
 	ctx, query, args, err := applyMiddlewares(ctx, p.middlewares, query, args)
 	if err != nil {
-		return pgconn.CommandTag{}, err
+		return pgconn.CommandTag{}, errfmt.WithSource(err)
 	}
 
 	if tx := ExtractTx(ctx); tx != nil {
-		return tx.Exec(ctx, query, args...)
+		tag, err := tx.Exec(ctx, query, args...)
+		return tag, errfmt.WithSource(err)
 	}
 
-	return p.pool.Exec(ctx, query, args...)
+	tag, err := p.pool.Exec(ctx, query, args...)
+	return tag, errfmt.WithSource(err)
 }
 
 func (p *Postgres) BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error) {

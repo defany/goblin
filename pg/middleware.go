@@ -1,6 +1,10 @@
 package pg
 
-import "context"
+import (
+	"context"
+
+	"github.com/defany/goblin/errfmt"
+)
 
 type Request struct {
 	Query string
@@ -20,7 +24,7 @@ func applyMiddlewares(ctx context.Context, mws []Middleware, query string, args 
 	for _, mw := range mws {
 		ctx, req, err = mw(ctx, req)
 		if err != nil {
-			return ctx, "", nil, err
+			return ctx, "", nil, errfmt.WithSource(err)
 		}
 	}
 
