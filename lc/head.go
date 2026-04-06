@@ -22,6 +22,8 @@ func (h *Head) Go(fn func(context.Context) error) *Head {
 func (h *Head) run(ctx context.Context) error {
 	p := pool.New().WithErrors()
 
+	lcCtx := with(ctx, h.l)
+
 	for cur := h; cur != nil; cur = cur.then {
 		ready := make(chan struct{})
 		once := sync.Once{}
@@ -30,7 +32,7 @@ func (h *Head) run(ctx context.Context) error {
 		next := cur.then
 
 		p.Go(func() error {
-			readyCtx := withReady(ctx, func() {
+			readyCtx := withReady(lcCtx, func() {
 				once.Do(func() { close(ready) })
 			})
 
