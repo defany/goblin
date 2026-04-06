@@ -18,9 +18,10 @@ type Lifecycle struct {
 
 	shutdownTimeout time.Duration
 
-	mu     sync.Mutex
-	defers []func(context.Context) error
-	heads  []*Head
+	mu          sync.Mutex
+	onShutdowns []func(context.Context) error
+	defers      []func(context.Context) error
+	heads       []*Head
 }
 
 const defaultShutdownTimeout = 5 * time.Second
@@ -58,6 +59,13 @@ func (l *Lifecycle) Go(fn func(context.Context) error) *Head {
 	return h
 }
 
+func (l *Lifecycle) addOnShutdown(fn func(context.Context) error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	l.onShutdowns = append(l.onShutdowns, fn)
+}
+
 func (l *Lifecycle) addDefer(fn func(context.Context) error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -81,8 +89,30 @@ func (l *Lifecycle) Run() error {
 		})
 	}
 
+	// Run onShutdown hooks when signal is received, before waiting for goroutines.
+	// This allows stopping listeners (e.g. server.Shutdown) so goroutines can finish.
+	go func() {
+		<-l.ctx.Done()
+
+		l.mu.Lock()
+		onShutdowns := make([]func(context.Context) error, len(l.onShutdowns))
+		copy(onShutdowns, l.onShutdowns)
+		l.mu.Unlock()
+
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), l.shutdownTimeout)
+		defer shutdownCancel()
+
+		for i := len(onShutdowns) - 1; i >= 0; i-- {
+			if err := onShutdowns[i](shutdownCtx); err != nil {
+				l.logger.Error("on shutdown failed", slog.String("error", err.Error()))
+			}
+		}
+	}()
+
 	err := p.Wait()
 
+	// Run defers after all goroutines have finished.
+	// This is for closing resources like database connections.
 	l.mu.Lock()
 	defers := make([]func(context.Context) error, len(l.defers))
 	copy(defers, l.defers)
