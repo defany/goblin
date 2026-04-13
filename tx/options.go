@@ -13,19 +13,20 @@ func WithPanicHandler(fn func(ctx context.Context, p HandledPanic)) Option {
 	}
 }
 
-func WithIsRetryable(fn func(error) bool) Option {
+func WithJoinRetryErrors(on bool) Option {
 	return func(m *Manager) {
-		m.isRetryable = fn
+		m.joinRetryErrors = on
 	}
 }
 
 type RunOption func(*runConfig)
 
 type runConfig struct {
-	iso        IsoLevel
-	readOnly   bool
-	retry      uint
-	maxBackoff time.Duration
+	iso         IsoLevel
+	readOnly    bool
+	retry       uint
+	maxBackoff  time.Duration
+	isRetryable func(error) bool
 }
 
 var defaultRunConfig = runConfig{
@@ -53,5 +54,11 @@ func WithRetry(n uint) RunOption {
 func WithMaxBackoff(d time.Duration) RunOption {
 	return func(c *runConfig) {
 		c.maxBackoff = d
+	}
+}
+
+func WithIsErrorRetryable(fn func(error) bool) RunOption {
+	return func(c *runConfig) {
+		c.isRetryable = fn
 	}
 }

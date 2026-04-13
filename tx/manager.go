@@ -32,9 +32,9 @@ func injectTx(ctx context.Context, t Transaction) context.Context {
 }
 
 type Manager struct {
-	db           Beginner
-	panicHandler func(ctx context.Context, p HandledPanic)
-	isRetryable  func(error) bool
+	db              Beginner
+	panicHandler    func(ctx context.Context, p HandledPanic)
+	joinRetryErrors bool
 }
 
 func New(db Beginner, opts ...Option) *Manager {
@@ -67,16 +67,20 @@ func (m *Manager) Run(ctx context.Context, h Handler, opts ...RunOption) error {
 		return m.execTx(ctx, cfg, h)
 	}
 
+	var errs []error
+
 	for attempt := range cfg.retry + 1 {
 		err := m.execTx(ctx, cfg, h)
 		if err == nil {
 			return nil
 		}
 
-		shouldRetry := !m.db.IsRetryable(err) && (m.isRetryable == nil || !m.isRetryable(err))
-		if !shouldRetry {
+		retryable := m.db.IsRetryable(err) || (cfg.isRetryable != nil && cfg.isRetryable(err))
+		if !retryable {
 			return err
 		}
+
+		errs = append(errs, err)
 
 		if attempt < cfg.retry {
 			delay := backoff(baseBackoff, cfg.maxBackoff, attempt)
@@ -89,7 +93,12 @@ func (m *Manager) Run(ctx context.Context, h Handler, opts ...RunOption) error {
 		}
 	}
 
-	return errfmt.WithSource(fmt.Errorf("tx: retries exceeded"))
+	cause := errs[len(errs)-1]
+	if m.joinRetryErrors {
+		cause = errors.Join(errs...)
+	}
+
+	return errfmt.WithSource(fmt.Errorf("tx: retries exceeded (%d attempts): %w", len(errs), cause))
 }
 
 func (m *Manager) execTx(ctx context.Context, cfg runConfig, h Handler) (err error) {
