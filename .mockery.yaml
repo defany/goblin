@@ -1,0 +1,10 @@
+template: testify
+formatter: gofmt
+dir: "{{.InterfaceDir}}/mocks"
+filename: "mock_{{.InterfaceName}}.go"
+pkgname: "mocks"
+structname: "Mock{{.InterfaceName}}"
+packages:
+  github.com/defany/goblin/river:
+    config:
+      all: true

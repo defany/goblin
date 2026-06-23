@@ -18,6 +18,19 @@ var (
 	ErrJobNotFound       = fmt.Errorf("river: job not found")
 )
 
+// Queue is the contract implemented by Repository. Consumers depend on it to
+// stay mockable while New keeps returning the concrete *Repository.
+type Queue[T river.JobArgs] interface {
+	Insert(ctx context.Context, args T, opts ...*river.InsertOpts) (*rivertype.JobInsertResult, error)
+	InsertMany(ctx context.Context, args []T, opts ...*river.InsertOpts) ([]*rivertype.JobInsertResult, error)
+	FetchJob(ctx context.Context, id int64) (*rivertype.JobRow, error)
+	FetchJobs(ctx context.Context, ids ...int64) ([]*rivertype.JobRow, error)
+	CancelJobs(ctx context.Context, ids ...int64) error
+	DeleteJobs(ctx context.Context, ids ...int64) error
+}
+
+var _ Queue[river.JobArgs] = (*Repository[river.JobArgs])(nil)
+
 type Repository[T river.JobArgs] struct {
 	client *river.Client[pgx.Tx]
 }
