@@ -85,13 +85,24 @@ func (l *Lifecycle) Run() error {
 
 	for _, h := range heads {
 		p.Go(func() error {
-			return h.run(l.ctx)
+			err := h.run(l.ctx)
+			if err != nil {
+				// A failed subsystem takes the whole app down gracefully instead
+				// of leaving the rest running half-dead.
+				l.cancel()
+			}
+
+			return err
 		})
 	}
 
 	// Run onShutdown hooks when signal is received, before waiting for goroutines.
 	// This allows stopping listeners (e.g. server.Shutdown) so goroutines can finish.
+	hooksDone := make(chan struct{})
+
 	go func() {
+		defer close(hooksDone)
+
 		<-l.ctx.Done()
 
 		l.mu.Lock()
@@ -110,6 +121,11 @@ func (l *Lifecycle) Run() error {
 	}()
 
 	err := p.Wait()
+
+	// Unblock the hooks goroutine when all goroutines finished without a signal,
+	// then wait it out: defers must not close resources hooks still use.
+	l.cancel()
+	<-hooksDone
 
 	// Run defers after all goroutines have finished.
 	// This is for closing resources like database connections.
