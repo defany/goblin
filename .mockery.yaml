@@ -5,6 +5,6 @@ filename: "mock_{{.InterfaceName}}.go"
 pkgname: "mocks"
 structname: "Mock{{.InterfaceName}}"
 packages:
-  github.com/defany/goblin/river:
+  github.com/defany/goblin/riverx:
     config:
       all: true

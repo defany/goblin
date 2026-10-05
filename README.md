@@ -21,7 +21,7 @@ Utility library for Go projects.
 | `pg/tx` | `github.com/defany/goblin/pg/tx` | PostgreSQL adapter for transaction manager |
 | `pg/migrate` | `github.com/defany/goblin/pg/migrate` | Database migrations via goose |
 | [`tx`](tx/example_test.go) | `github.com/defany/goblin/tx` | Database-agnostic transaction manager with retry |
-| `river` | `github.com/defany/goblin/river` | River job queue repository |
+| `riverx` | `github.com/defany/goblin/riverx` | River job queue repository and job logger |
 
 ### Logging & Errors
 

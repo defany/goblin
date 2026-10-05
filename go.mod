@@ -7,8 +7,8 @@ require (
 	github.com/gookit/goutil v0.7.4
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/pressly/goose/v3 v3.27.0
-	github.com/riverqueue/river v0.33.0
-	github.com/riverqueue/river/rivertype v0.33.0
+	github.com/riverqueue/river v0.34.0
+	github.com/riverqueue/river/rivertype v0.34.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/sync v0.20.0
 )
@@ -22,8 +22,8 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/riverqueue/river/riverdriver v0.33.0 // indirect
-	github.com/riverqueue/river/rivershared v0.33.0 // indirect
+	github.com/riverqueue/river/riverdriver v0.34.0 // indirect
+	github.com/riverqueue/river/rivershared v0.34.0 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
